@@ -1,13 +1,12 @@
-## License: Apache 2.0. See LICENSE file in root directory.
-## Copyright(c) 2015-2017 Intel Corporation. All Rights Reserved.
-
-###############################################
-##      Open CV and Numpy integration        ##
-###############################################
-
-import pyrealsense2.pyrealsense2 as rs
-import numpy as np
+import logging
+import sys
+import time
+import math
 import cv2
+import numpy as np
+from openpose import pyopenpose as op
+import pyrealsense2.pyrealsense2 as rs
+
 
 # Configure depth and color streams
 pipeline = rs.pipeline()
@@ -33,29 +32,48 @@ if device_product_line == 'L500':
 else:
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 
-# Start streaming
-pipeline.start(config)
 
-try:
-    while True:
+if __name__ == '__main__':
+    fps_time = 0
 
-        # Wait for a color image
-        frames = pipeline.wait_for_frames()
-        color_frame = frames.get_color_frame()
-        if not color_frame:
-            continue
+    params = dict()
+    params["model_folder"] = "../../models/"
+
+    # Starting OpenPose
+    opWrapper = op.WrapperPython()
+    opWrapper.configure(params)
+    opWrapper.start()
+
+
+    print("OpenPose start")
+    pipeline.start(config)
 
         # Convert images to numpy arrays
-        color_image = np.asanyarray(color_frame.get_data())
+    
+    count = 0
+    try:
+        while True:
+            frames = pipeline.wait_for_frames()
+            color_frame = frames.get_color_frame()
+            dst = np.asanyarray(color_frame.get_data())
+            #dst = cv2.resize(image, dsize=(320, 240), interpolation=cv2.INTER_AREA)
+            #cv2.imshow("OpenPose 1.5.1 - Tutorial Python API", dst)
+            #continue
 
-        color_colormap_dim = color_image.shape
+            datum = op.Datum()
+            datum.cvInputData = dst
+            opWrapper.emplaceAndPop([datum])
+            fps = 1.0 / (time.time() - fps_time)
+            fps_time = time.time()
+            newImage = datum.cvOutputData[:, :, :]
+            cv2.putText(newImage , "FPS: %f" % (fps), (20, 40),  cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            # out_video.write(newImage)
 
-        # Show images
-        cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-        cv2.imshow('RealSense', color_image)
-        cv2.waitKey(1)
+            print("captured fps %f"%(fps))
+            cv2.imshow("OpenPose 1.5.1 - Tutorial Python API", newImage)
+            count += 1
 
-finally:
+    finally:
 
-    # Stop streaming
-    pipeline.stop()
+        # Stop streaming
+        pipeline.stop()
