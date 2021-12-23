@@ -5,7 +5,7 @@
 ##      Open CV and Numpy integration        ##
 ###############################################
 
-import pyrealsense2 as rs
+import pyrealsense2.pyrealsense2 as rs
 import numpy as np
 import cv2
 
@@ -52,7 +52,7 @@ try:
 
         # Show images
         cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-        cv2.imshow('RealSense', images)
+        cv2.imshow('RealSense', color_image)
         cv2.waitKey(1)
 
 finally:
